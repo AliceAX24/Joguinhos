@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo da Velha com Checksum</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .status {
+            font-size: 1.3em;
+            margin: 20px 0;
+            color: #555;
+            font-weight: bold;
+            min-height: 30px;
+        }
+
+        .board-container {
+            display: inline-block;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 120px);
+            grid-template-rows: repeat(3, 120px);
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .cell {
+            background: #f0f0f0;
+            border: 3px solid #667eea;
+            border-radius: 10px;
+            font-size: 3em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+        }
+
+        .cell:hover:not(.taken) {
+            background: #e0e0ff;
+            transform: scale(1.05);
+        }
+
+        .cell.taken {
+            cursor: not-allowed;
+        }
+
+        .cell.x {
+            color: #667eea;
+        }
+
+        .cell.o {
+            color: #764ba2;
+        }
+
+        .cell.winner {
+            background: #ffd700;
+            animation: pulse 0.5s ease-in-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .checksum-container {
+            margin-top: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            color: white;
+        }
+
+        .checksum-label {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .checksum-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            background: rgba(255,255,255,0.2);
+            padding: 15px;
+            border-radius: 10px;
+            letter-spacing: 2px;
+        }
+
+        .checksum-info {
+            font-size: 0.9em;
+            margin-top: 10px;
+            opacity: 0.9;
+        }
+
+        .controls {
+            margin-top: 20px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1em;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+            margin: 5px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .game-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            text-align: left;
+        }
+
+        .game-info h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .game-info p {
+            color: #666;
+            line-height: 1.6;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 Jogo da Velha</h1>
+        <div class="status" id="status">Vez do Jogador X</div>
+        
+        <div class="board-container">
+            <div class="board" id="board">
+                <div class="cell" data-position="0"></div>
+                <div class="cell" data-position="1"></div>
+                <div class="cell" data-position="2"></div>
+                <div class="cell" data-position="3"></div>
+                <div class="cell" data-position="4"></div>
+                <div class="cell" data-position="5"></div>
+                <div class="cell" data-position="6"></div>
+                <div class="cell" data-position="7"></div>
+                <div class="cell" data-position="8"></div>
+            </div>
+        </div>
+
+        <div class="checksum-container">
+            <div class="checksum-label">🔢 Casa 10 - Checksum Numérico</div>
+            <div class="checksum-value" id="checksum">000000000</div>
+            <div class="checksum-info">Representação única do estado atual do jogo</div>
+        </div>
+
+        <div class="controls">
+            <button onclick="resetGame()">🔄 Novo Jogo</button>
+        </div>
+
+        <div class="game-info">
+            <h3>📋 Sobre o Checksum</h3>
+            <p><strong>Casa 10</strong> mostra um número único que representa a posição inteira do jogo.</p>
+            <p>Cada casa vazia = 0, X = 1, O = 2</p>
+            <p>O checksum é calculado usando base 3: posição[i] × 3^i</p>
+            <p>Isso garante que cada estado do jogo tenha um número único!</p>
+        </div>
+    </div>
+
+    <script>
+        let board = ['', '', '', '', '', '', '', '', ''];
+        let currentPlayer = 'X';
+        let gameActive = true;
+
+        const winConditions = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8], // Linhas
+            [0, 3, 6], [1, 4, 7], [2, 5, 8], // Colunas
+            [0, 4, 8], [2, 4, 6]             // Diagonais
+        ];
+
+        function calculateChecksum() {
+            let checksum = 0;
+            for (let i = 0; i < 9; i++) {
+                let value = 0;
+                if (board[i] === 'X') value = 1;
+                else if (board[i] === 'O') value = 2;
+                
+                // Base 3: posição[i] * 3^i
+                checksum += value * Math.pow(3, i);
+            }
+            return checksum.toString().padStart(9, '0');
+        }
+
+        function updateChecksum() {
+            const checksum = calculateChecksum();
+            document.getElementById('checksum').textContent = checksum;
+        }
+
+        function handleCellClick(event) {
+            const cell = event.target;
+            const position = parseInt(cell.getAttribute('data-position'));
+
+            if (board[position] !== '' || !gameActive) {
+                return;
+            }
+
+            board[position] = currentPlayer;
+            cell.textContent = currentPlayer;
+            cell.classList.add('taken', currentPlayer.toLowerCase());
+
+            if (checkWin()) {
+                document.getElementById('status').textContent = `🎉 Jogador ${currentPlayer} venceu!`;
+                gameActive = false;
+                highlightWinner();
+            } else if (board.every(cell => cell !== '')) {
+                document.getElementById('status').textContent = '🤝 Empate!';
+                gameActive = false;
+            } else {
+                currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+                document.getElementById('status').textContent = `Vez do Jogador ${currentPlayer}`;
+            }
+
+            updateChecksum();
+        }
+
+        function checkWin() {
+            return winConditions.some(condition => {
+                return condition.every(position => board[position] === currentPlayer);
+            });
+        }
+
+        function highlightWinner() {
+            winConditions.forEach(condition => {
+                if (condition.every(position => board[position] === currentPlayer)) {
+                    condition.forEach(position => {
+                        document.querySelector(`[data-position="${position}"]`).classList.add('winner');
+                    });
+                }
+            });
+        }
+
+        function resetGame() {
+            board = ['', '', '', '', '', '', '', '', ''];
+            currentPlayer = 'X';
+            gameActive = true;
+            document.getElementById('status').textContent = 'Vez do Jogador X';
+            
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach(cell => {
+                cell.textContent = '';
+                cell.classList.remove('taken', 'x', 'o', 'winner');
+            });
+
+            updateChecksum();
+        }
+
+        // Inicializar
+        document.querySelectorAll('.cell').forEach(cell => {
+            cell.addEventListener('click', handleCellClick);
+        });
+
+        updateChecksum();
+    </script>
+</body>
+</html>
