@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal de Jogos de Tabuleiro</title>
+    <style>
+        :root {
+            --bg-color: #121214;
+            --card-bg: #1e1e24;
+            --text-color: #ffffff;
+            --text-secondary: #94a3b8;
+            --accent-color: #6366f1;
+            --accent-hover: #4f46e5;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #6366f1, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .grid-jogos {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .card-jogo {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            border: 1px solid #2a2a32;
+        }
+
+        .card-jogo:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.2);
+            border-color: var(--accent-color);
+        }
+
+        .icone {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        .card-jogo h2 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+        }
+
+        .card-jogo p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            margin-bottom: 20px;
+            line-height: 1.4;
+        }
+
+        .btn-jogar {
+            display: inline-block;
+            background-color: var(--accent-color);
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: background-color 0.2s ease;
+        }
+
+        .btn-jogar:hover {
+            background-color: var(--accent-hover);
+        }
+
+        footer {
+            margin-top: 50px;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Mental Game Zone</h1>
+        <p>Escolha um desafio e comece a jogar!</p>
+    </header>
+
+    <main class="grid-jogos">
+        <!-- Jogo de Damas -->
+        <article class="card-jogo">
+            <div>
+                <div class="icone">🔴</div>
+                <h2>Damas</h2>
+                <p>Capture todas as peças do seu oponente nesta batalha clássica de estratégia.</p>
+            </div>
+            <a href="damas.html" class="btn-jogar">Jogar Agora</a>
+        </article>
+
+        <!-- Jogo da Velha -->
+        <article class="card-jogo">
+            <div>
+                <div class="icone">❌</div>
+                <h2>Jogo da Velha</h2>
+                <p>O bom e velho três em linha. Rápido, simples e ideal para desafiar um amigo.</p>
+            </div>
+            <a href="jogodavelha.html" class="btn-jogar">Jogar Agora</a>
+        </article>
+
+        <!-- Xadrez -->
+        <article class="card-jogo">
+            <div>
+                <div class="icone">👑</div>
+                <h2>Xadrez</h2>
+                <p>O teste supremo da mente. Proteja seu rei e planeje seus movimentos com antecedência.</p>
+            </div>
+            <a href="xadrez.html" class="btn-jogar">Jogar Agora</a>
+        </article>
+    </main>
+
+    <footer>
+        <p>Desenvolvido para rodar no seu servidor ou ambiente local.</p>
+    </footer>
+
+</body>
+</html>
