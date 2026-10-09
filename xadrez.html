@@ -168,6 +168,8 @@
             letter-spacing: 1px;
             margin-bottom: 15px;
             word-break: break-all;
+            max-height: 120px;
+            overflow-y: auto;
         }
 
         .copy-btn {
@@ -353,6 +355,11 @@
         let blackTime = 900;
         let timerInterval = null;
         let gameActive = true;
+        let moveCount = 0;
+
+        // Constantes para codificação
+        const BASE = 13n ** 64n;
+        const TIME_MAX = 901n; // 0 a 900 segundos
 
         function initBoard() {
             board = Array(8).fill(null).map(() => Array(8).fill(null));
@@ -410,28 +417,29 @@
         }
 
         function calculateChecksum() {
-            let checksum = 0n;
-            
+            // 1) Codificar posição (64 casas, base 13)
+            let posChecksum = 0n;
             for (let row = 0; row < 8; row++) {
                 for (let col = 0; col < 8; col++) {
                     let value = 0;
                     if (board[row][col]) {
-                        const pieceType = board[row][col].type;
-                        const pieceColor = board[row][col].color;
-                        const typeValue = { 'pawn': 1, 'knight': 2, 'bishop': 3, 'rook': 4, 'queen': 5, 'king': 6 }[pieceType];
-                        value = pieceColor === 'white' ? typeValue : typeValue + 6;
+                        const typeValue = { 'pawn': 1, 'knight': 2, 'bishop': 3, 'rook': 4, 'queen': 5, 'king': 6 }[board[row][col].type];
+                        value = board[row][col].color === 'white' ? typeValue : typeValue + 6;
                     }
-                    
                     const position = row * 8 + col;
-                    checksum += BigInt(value) * (13n ** BigInt(position));
+                    posChecksum += BigInt(value) * (13n ** BigInt(position));
                 }
             }
             
-            checksum += BigInt(whiteTime) * (13n ** 64n);
-            checksum += BigInt(blackTime) * (13n ** 64n) * 1000n;
+            // 2) Codificar tudo junto:
+            //    checksum = posicao + whiteTime * BASE + blackTime * BASE * TIME_MAX + turn * BASE * TIME_MAX * TIME_MAX + moveCount * BASE * TIME_MAX * TIME_MAX * 2
+            const turn = currentPlayer === 'white' ? 0n : 1n;
             
-            const turn = currentPlayer === 'white' ? 0 : 1;
-            checksum += BigInt(turn) * (13n ** 64n) * 1000000n;
+            let checksum = posChecksum;
+            checksum += BigInt(whiteTime) * BASE;
+            checksum += BigInt(blackTime) * BASE * TIME_MAX;
+            checksum += turn * BASE * TIME_MAX * TIME_MAX;
+            checksum += BigInt(moveCount) * BASE * TIME_MAX * TIME_MAX * 2n;
             
             return checksum.toString();
         }
@@ -440,17 +448,28 @@
             let checksum = BigInt(checksumStr);
             const newBoard = Array(8).fill(null).map(() => Array(8).fill(null));
             
-            const turnMultiplier = (13n ** 64n) * 1000000n;
+            // Extrair na ordem inversa da codificação
+            
+            // 1) moveCount
+            const moveCountMultiplier = BASE * TIME_MAX * TIME_MAX * 2n;
+            const decodedMoveCount = Number(checksum / moveCountMultiplier);
+            checksum = checksum % moveCountMultiplier;
+            
+            // 2) turn
+            const turnMultiplier = BASE * TIME_MAX * TIME_MAX;
             const turn = Number(checksum / turnMultiplier);
             checksum = checksum % turnMultiplier;
             
-            const blackTimeMultiplier = (13n ** 64n);
-            const blackTimeVal = Number(checksum / blackTimeMultiplier);
+            // 3) blackTime
+            const blackTimeMultiplier = BASE * TIME_MAX;
+            const decodedBlackTime = Number(checksum / blackTimeMultiplier);
             checksum = checksum % blackTimeMultiplier;
             
-            const whiteTimeVal = Number(checksum / (13n ** 64n));
-            checksum = checksum % (13n ** 64n);
+            // 4) whiteTime
+            const decodedWhiteTime = Number(checksum / BASE);
+            checksum = checksum % BASE;
             
+            // 5) posição (o que sobrou)
             for (let row = 0; row < 8; row++) {
                 for (let col = 0; col < 8; col++) {
                     const position = row * 8 + col;
@@ -474,7 +493,29 @@
                 }
             }
             
-            return { board: newBoard, whiteTime: whiteTimeVal, blackTime: blackTimeVal, turn: turn === 0 ? 'white' : 'black' };
+            return {
+                board: newBoard,
+                whiteTime: decodedWhiteTime,
+                blackTime: decodedBlackTime,
+                turn: turn === 0 ? 'white' : 'black',
+                moveCount: decodedMoveCount
+            };
+        }
+
+        function isInitialPosition(b) {
+            // Verifica se o tabuleiro está na posição inicial
+            for (let row = 2; row < 6; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if (b[row][col] !== null) return false;
+                }
+            }
+            for (let col = 0; col < 8; col++) {
+                if (!b[0][col] || b[0][col].color !== 'black') return false;
+                if (!b[1][col] || b[1][col].color !== 'black' || b[1][col].type !== 'pawn') return false;
+                if (!b[6][col] || b[6][col].color !== 'white' || b[6][col].type !== 'pawn') return false;
+                if (!b[7][col] || b[7][col].color !== 'white') return false;
+            }
+            return true;
         }
 
         function updateChecksum() {
@@ -485,6 +526,15 @@
         function copyChecksum() {
             const checksum = document.getElementById('checksum').textContent;
             navigator.clipboard.writeText(checksum).then(() => {
+                showNotification('✅ Checksum copiado!');
+            }).catch(() => {
+                // Fallback para navegadores que não suportam clipboard
+                const textarea = document.createElement('textarea');
+                textarea.value = checksum;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
                 showNotification('✅ Checksum copiado!');
             });
         }
@@ -501,22 +551,50 @@
                 stopTimer();
                 
                 const gameState = decodeChecksum(input);
+                
+                // Validar tempos
+                if (gameState.whiteTime < 0 || gameState.whiteTime > 900 ||
+                    gameState.blackTime < 0 || gameState.blackTime > 900) {
+                    showNotification('❌ Tempos inválidos no checksum!', 'error');
+                    return;
+                }
+                
+                // Não permitir pretas jogarem primeiro (posição inicial)
+                if (isInitialPosition(gameState.board) && gameState.turn === 'black') {
+                    showNotification('❌ Pretas não podem jogar primeiro!', 'error');
+                    return;
+                }
+                
+                // Não permitir pretas jogarem primeiro (nenhum movimento feito)
+                if (gameState.moveCount === 0 && gameState.turn === 'black') {
+                    showNotification('❌ Pretas não podem jogar primeiro!', 'error');
+                    return;
+                }
+                
                 board = gameState.board;
                 whiteTime = gameState.whiteTime;
                 blackTime = gameState.blackTime;
                 currentPlayer = gameState.turn;
+                moveCount = gameState.moveCount;
                 gameActive = true;
                 
                 renderBoard();
                 startTimer();
                 
+                const formatTime = (s) => {
+                    const m = Math.floor(s / 60);
+                    const sec = s % 60;
+                    return `${m.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`;
+                };
+                
                 document.getElementById('status').textContent = 
-                    `Vez das ${currentPlayer === 'white' ? 'Brancas' : 'Pretas'}`;
+                    `Vez das ${currentPlayer === 'white' ? 'Brancas' : 'Pretas'} - B:${formatTime(whiteTime)} P:${formatTime(blackTime)}`;
                 
                 showNotification('✅ Jogo carregado com sucesso!');
                 document.getElementById('checksumInput').value = '';
                 
             } catch (error) {
+                console.error(error);
                 showNotification('❌ Checksum inválido!', 'error');
             }
         }
@@ -655,6 +733,7 @@
             }
             
             clearSelection();
+            moveCount++;
             
             currentPlayer = currentPlayer === 'white' ? 'black' : 'white';
             startTimer();
@@ -668,17 +747,21 @@
         function startTimer() {
             stopTimer();
             timerInterval = setInterval(() => {
+                if (!gameActive) return;
+                
                 if (currentPlayer === 'white') {
                     whiteTime--;
                     if (whiteTime <= 0) {
-                        document.getElementById('status').textContent = '⏰ Tempo das Brancas esgotado!';
+                        whiteTime = 0;
+                        document.getElementById('status').textContent = '⏰ Tempo das Brancas esgotado! Pretas venceram!';
                         gameActive = false;
                         stopTimer();
                     }
                 } else {
                     blackTime--;
                     if (blackTime <= 0) {
-                        document.getElementById('status').textContent = '⏰ Tempo das Pretas esgotado!';
+                        blackTime = 0;
+                        document.getElementById('status').textContent = '⏰ Tempo das Pretas esgotado! Brancas venceram!';
                         gameActive = false;
                         stopTimer();
                     }
@@ -697,16 +780,17 @@
 
         function updateTimers() {
             const formatTime = (seconds) => {
-                const mins = Math.floor(seconds / 60);
-                const secs = seconds % 60;
+                const s = Math.max(0, seconds);
+                const mins = Math.floor(s / 60);
+                const secs = s % 60;
                 return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
             };
             
             document.getElementById('white-time').textContent = formatTime(whiteTime);
             document.getElementById('black-time').textContent = formatTime(blackTime);
             
-            document.getElementById('white-timer').classList.toggle('active', currentPlayer === 'white');
-            document.getElementById('black-timer').classList.toggle('active', currentPlayer === 'black');
+            document.getElementById('white-timer').classList.toggle('active', currentPlayer === 'white' && gameActive);
+            document.getElementById('black-timer').classList.toggle('active', currentPlayer === 'black' && gameActive);
         }
 
         function resetGame() {
@@ -715,6 +799,7 @@
             validMoves = [];
             whiteTime = 900;
             blackTime = 900;
+            moveCount = 0;
             gameActive = true;
             document.getElementById('status').textContent = 'Vez das Brancas - 15:00';
             stopTimer();
