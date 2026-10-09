@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xadrez com Relógio e Checksum</title>
+    <title>Xadrez com Import/Export</title>
     <style>
         * {
             margin: 0;
@@ -83,12 +83,6 @@
             opacity: 0.8;
         }
 
-        .board-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
         .board {
             display: grid;
             grid-template-columns: repeat(8, 70px);
@@ -140,16 +134,6 @@
             background: #f44336 !important;
         }
 
-        .cell.check {
-            background: #ff5722 !important;
-            animation: pulse 1s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { box-shadow: inset 0 0 10px rgba(255,0,0,0.5); }
-            50% { box-shadow: inset 0 0 20px rgba(255,0,0,0.8); }
-        }
-
         .piece {
             user-select: none;
             cursor: pointer;
@@ -160,7 +144,7 @@
             transform: scale(1.1);
         }
 
-        .checksum-container {
+        .checksum-section {
             margin-top: 30px;
             padding: 20px;
             background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
@@ -174,21 +158,68 @@
             font-weight: bold;
         }
 
-        .checksum-value {
-            font-size: 1.5em;
+        .checksum-display {
+            font-size: 1.3em;
             font-weight: bold;
             font-family: 'Courier New', monospace;
             background: rgba(255,255,255,0.2);
             padding: 15px;
             border-radius: 10px;
             letter-spacing: 1px;
+            margin-bottom: 15px;
             word-break: break-all;
         }
 
-        .checksum-info {
-            font-size: 0.9em;
-            margin-top: 10px;
-            opacity: 0.9;
+        .copy-btn {
+            background: rgba(255,255,255,0.3);
+            color: white;
+            border: 2px solid white;
+            padding: 10px 20px;
+            font-size: 1em;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+            margin: 5px;
+        }
+
+        .copy-btn:hover {
+            background: rgba(255,255,255,0.5);
+        }
+
+        .input-section {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .checksum-input {
+            flex: 1;
+            padding: 12px;
+            font-size: 1em;
+            font-family: 'Courier New', monospace;
+            border: 2px solid white;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.9);
+            color: #333;
+        }
+
+        .load-btn {
+            background: white;
+            color: #2c3e50;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1em;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+
+        .load-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }
 
         .controls {
@@ -239,6 +270,30 @@
             line-height: 1.6;
             margin: 5px 0;
         }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #4caf50;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            animation: slideIn 0.3s ease-out;
+            z-index: 1000;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
     </style>
 </head>
 <body>
@@ -258,15 +313,18 @@
                 </div>
             </div>
 
-            <div class="board-container">
-                <div class="board" id="board"></div>
-            </div>
+            <div class="board" id="board"></div>
         </div>
 
-        <div class="checksum-container">
-            <div class="checksum-label">🔢 Casa 10 - Checksum (Posição + Tempo)</div>
-            <div class="checksum-value" id="checksum">0</div>
-            <div class="checksum-info">Representação única: posição do tabuleiro + tempo restante + turno</div>
+        <div class="checksum-section">
+            <div class="checksum-label">🔢 Casa 10 - Checksum (SAÍDA)</div>
+            <div class="checksum-display" id="checksum">0</div>
+            <button class="copy-btn" onclick="copyChecksum()">📋 Copiar Checksum</button>
+            
+            <div class="input-section">
+                <input type="text" class="checksum-input" id="checksumInput" placeholder="Cole o checksum aqui...">
+                <button class="load-btn" onclick="loadFromChecksum()">📥 Carregar</button>
+            </div>
         </div>
 
         <div class="controls">
@@ -274,11 +332,10 @@
         </div>
 
         <div class="game-info">
-            <h3>📋 Sobre o Checksum</h3>
-            <p><strong>Casa 10</strong> combina posição + tempo em um número único.</p>
-            <p>Peças: 0=vazio, 1-6=brancas (peão,cavalo,bispo,torre,dama,rei), 7-12=pretas</p>
-            <p>Checksum = posição(base 13) + tempo_brancas + tempo_pretas + turno</p>
-            <p>Atualiza a cada movimento e a cada segundo do relógio!</p>
+            <h3>📋 Como Usar</h3>
+            <p><strong>Exportar:</strong> Copie o checksum após cada jogada e envie para o outro jogador.</p>
+            <p><strong>Importar:</strong> Cole o checksum recebido e clique em "Carregar" para recriar o jogo com posição e tempo.</p>
+            <p>Cada checksum representa um estado único: posição + tempo + turno!</p>
         </div>
     </div>
 
@@ -292,7 +349,7 @@
         let currentPlayer = 'white';
         let selectedPiece = null;
         let validMoves = [];
-        let whiteTime = 900; // 15 minutos em segundos
+        let whiteTime = 900;
         let blackTime = 900;
         let timerInterval = null;
         let gameActive = true;
@@ -300,7 +357,6 @@
         function initBoard() {
             board = Array(8).fill(null).map(() => Array(8).fill(null));
             
-            // Peças pretas
             board[0][0] = { type: 'rook', color: 'black' };
             board[0][1] = { type: 'knight', color: 'black' };
             board[0][2] = { type: 'bishop', color: 'black' };
@@ -313,7 +369,6 @@
                 board[1][col] = { type: 'pawn', color: 'black' };
             }
             
-            // Peças brancas
             board[7][0] = { type: 'rook', color: 'white' };
             board[7][1] = { type: 'knight', color: 'white' };
             board[7][2] = { type: 'bishop', color: 'white' };
@@ -352,6 +407,118 @@
             
             updateTimers();
             updateChecksum();
+        }
+
+        function calculateChecksum() {
+            let checksum = 0n;
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    let value = 0;
+                    if (board[row][col]) {
+                        const pieceType = board[row][col].type;
+                        const pieceColor = board[row][col].color;
+                        const typeValue = { 'pawn': 1, 'knight': 2, 'bishop': 3, 'rook': 4, 'queen': 5, 'king': 6 }[pieceType];
+                        value = pieceColor === 'white' ? typeValue : typeValue + 6;
+                    }
+                    
+                    const position = row * 8 + col;
+                    checksum += BigInt(value) * (13n ** BigInt(position));
+                }
+            }
+            
+            checksum += BigInt(whiteTime) * (13n ** 64n);
+            checksum += BigInt(blackTime) * (13n ** 64n) * 1000n;
+            
+            const turn = currentPlayer === 'white' ? 0 : 1;
+            checksum += BigInt(turn) * (13n ** 64n) * 1000000n;
+            
+            return checksum.toString();
+        }
+
+        function decodeChecksum(checksumStr) {
+            let checksum = BigInt(checksumStr);
+            const newBoard = Array(8).fill(null).map(() => Array(8).fill(null));
+            
+            const turnMultiplier = (13n ** 64n) * 1000000n;
+            const turn = Number(checksum / turnMultiplier);
+            checksum = checksum % turnMultiplier;
+            
+            const blackTimeMultiplier = (13n ** 64n);
+            const blackTimeVal = Number(checksum / blackTimeMultiplier);
+            checksum = checksum % blackTimeMultiplier;
+            
+            const whiteTimeVal = Number(checksum / (13n ** 64n));
+            checksum = checksum % (13n ** 64n);
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const position = row * 8 + col;
+                    const power = 13n ** BigInt(position);
+                    const value = Number((checksum / power) % 13n);
+                    
+                    if (value > 0) {
+                        const types = ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king'];
+                        let type, color;
+                        
+                        if (value <= 6) {
+                            color = 'white';
+                            type = types[value - 1];
+                        } else {
+                            color = 'black';
+                            type = types[value - 7];
+                        }
+                        
+                        newBoard[row][col] = { type, color };
+                    }
+                }
+            }
+            
+            return { board: newBoard, whiteTime: whiteTimeVal, blackTime: blackTimeVal, turn: turn === 0 ? 'white' : 'black' };
+        }
+
+        function updateChecksum() {
+            const checksum = calculateChecksum();
+            document.getElementById('checksum').textContent = checksum;
+        }
+
+        function copyChecksum() {
+            const checksum = document.getElementById('checksum').textContent;
+            navigator.clipboard.writeText(checksum).then(() => {
+                showNotification('✅ Checksum copiado!');
+            });
+        }
+
+        function loadFromChecksum() {
+            const input = document.getElementById('checksumInput').value.trim();
+            
+            if (!input) {
+                showNotification('❌ Cole um checksum válido!', 'error');
+                return;
+            }
+            
+            try {
+                stopTimer();
+                
+                const gameState = decodeChecksum(input);
+                board = gameState.board;
+                whiteTime = gameState.whiteTime;
+                blackTime = gameState.blackTime;
+                currentPlayer = gameState.turn;
+                gameActive = true;
+                
+                renderBoard();
+                startTimer();
+                
+                document.getElementById('status').textContent = 
+                    `Vez das ${currentPlayer === 'white' ? 'Brancas' : 'Pretas'}`;
+                
+                showNotification('✅ Jogo carregado com sucesso!');
+                document.getElementById('checksumInput').value = '';
+                
+            } catch (error) {
+                showNotification('❌ Checksum inválido!', 'error');
+            }
         }
 
         function handleCellClick(row, col) {
@@ -401,17 +568,14 @@
                 const direction = piece.color === 'white' ? -1 : 1;
                 const startRow = piece.color === 'white' ? 6 : 1;
                 
-                // Movimento simples
                 if (isValidPosition(row + direction, col) && !board[row + direction][col]) {
                     moves.push({ row: row + direction, col });
                     
-                    // Movimento duplo inicial
                     if (row === startRow && !board[row + 2 * direction][col]) {
                         moves.push({ row: row + 2 * direction, col });
                     }
                 }
                 
-                // Capturas
                 [-1, 1].forEach(dc => {
                     const newRow = row + direction;
                     const newCol = col + dc;
@@ -483,7 +647,6 @@
             board[toRow][toCol] = board[fromRow][fromCol];
             board[fromRow][fromCol] = null;
             
-            // Promoção de peão
             if (board[toRow][toCol].type === 'pawn') {
                 if ((board[toRow][toCol].color === 'white' && toRow === 0) ||
                     (board[toRow][toCol].color === 'black' && toRow === 7)) {
@@ -493,18 +656,7 @@
             
             clearSelection();
             
-            // Verificar xeque-mate
-            const opponent = currentPlayer === 'white' ? 'black' : 'white';
-            if (isCheckmate(opponent)) {
-                document.getElementById('status').textContent = `🎉 ${currentPlayer === 'white' ? 'Brancas' : 'Pretas'} venceram por xeque-mate!`;
-                gameActive = false;
-                stopTimer();
-                updateChecksum();
-                return;
-            }
-            
-            // Trocar jogador
-            currentPlayer = opponent;
+            currentPlayer = currentPlayer === 'white' ? 'black' : 'white';
             startTimer();
             
             document.getElementById('status').textContent = 
@@ -513,34 +665,20 @@
             renderBoard();
         }
 
-        function isCheckmate(color) {
-            // Simplificado - verifica se o rei está em xeque e não há movimentos válidos
-            for (let row = 0; row < 8; row++) {
-                for (let col = 0; col < 8; col++) {
-                    if (board[row][col] && board[row][col].color === color) {
-                        if (getValidMoves(row, col).length > 0) {
-                            return false;
-                        }
-                    }
-                }
-            }
-            return true;
-        }
-
         function startTimer() {
             stopTimer();
             timerInterval = setInterval(() => {
                 if (currentPlayer === 'white') {
                     whiteTime--;
                     if (whiteTime <= 0) {
-                        document.getElementById('status').textContent = '⏰ Tempo das Brancas esgotado! Pretas venceram!';
+                        document.getElementById('status').textContent = '⏰ Tempo das Brancas esgotado!';
                         gameActive = false;
                         stopTimer();
                     }
                 } else {
                     blackTime--;
                     if (blackTime <= 0) {
-                        document.getElementById('status').textContent = '⏰ Tempo das Pretas esgotado! Brancas venceram!';
+                        document.getElementById('status').textContent = '⏰ Tempo das Pretas esgotado!';
                         gameActive = false;
                         stopTimer();
                     }
@@ -571,41 +709,6 @@
             document.getElementById('black-timer').classList.toggle('active', currentPlayer === 'black');
         }
 
-        function calculateChecksum() {
-            let checksum = 0n;
-            
-            // Posição das peças (base 13)
-            for (let row = 0; row < 8; row++) {
-                for (let col = 0; col < 8; col++) {
-                    let value = 0;
-                    if (board[row][col]) {
-                        const pieceType = board[row][col].type;
-                        const pieceColor = board[row][col].color;
-                        const typeValue = { 'pawn': 1, 'knight': 2, 'bishop': 3, 'rook': 4, 'queen': 5, 'king': 6 }[pieceType];
-                        value = pieceColor === 'white' ? typeValue : typeValue + 6;
-                    }
-                    
-                    const position = row * 8 + col;
-                    checksum += BigInt(value) * (13n ** BigInt(position));
-                }
-            }
-            
-            // Adicionar tempo (base 1000 para segundos)
-            checksum += BigInt(whiteTime) * (13n ** 64n);
-            checksum += BigInt(blackTime) * (13n ** 64n) * 1000n;
-            
-            // Adicionar turno (0=brancas, 1=pretas)
-            const turn = currentPlayer === 'white' ? 0 : 1;
-            checksum += BigInt(turn) * (13n ** 64n) * 1000000n;
-            
-            return checksum.toString();
-        }
-
-        function updateChecksum() {
-            const checksum = calculateChecksum();
-            document.getElementById('checksum').textContent = checksum;
-        }
-
         function resetGame() {
             currentPlayer = 'white';
             selectedPiece = null;
@@ -619,7 +722,20 @@
             renderBoard();
         }
 
-        // Inicializar jogo
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.textContent = message;
+            if (type === 'error') {
+                notification.style.background = '#f44336';
+            }
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
         initBoard();
         renderBoard();
     </script>
