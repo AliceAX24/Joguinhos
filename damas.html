@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jogo de Damas com Checksum</title>
+    <title>Jogo de Damas com Import/Export</title>
     <style>
         * {
             margin: 0;
@@ -127,7 +127,7 @@
             transform: scale(1.1);
         }
 
-        .checksum-container {
+        .checksum-section {
             margin-top: 30px;
             padding: 20px;
             background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
@@ -141,21 +141,68 @@
             font-weight: bold;
         }
 
-        .checksum-value {
-            font-size: 1.8em;
+        .checksum-display {
+            font-size: 1.5em;
             font-weight: bold;
             font-family: 'Courier New', monospace;
             background: rgba(255,255,255,0.2);
             padding: 15px;
             border-radius: 10px;
             letter-spacing: 1px;
+            margin-bottom: 15px;
             word-break: break-all;
         }
 
-        .checksum-info {
-            font-size: 0.9em;
-            margin-top: 10px;
-            opacity: 0.9;
+        .copy-btn {
+            background: rgba(255,255,255,0.3);
+            color: white;
+            border: 2px solid white;
+            padding: 10px 20px;
+            font-size: 1em;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+            margin: 5px;
+        }
+
+        .copy-btn:hover {
+            background: rgba(255,255,255,0.5);
+        }
+
+        .input-section {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .checksum-input {
+            flex: 1;
+            padding: 12px;
+            font-size: 1em;
+            font-family: 'Courier New', monospace;
+            border: 2px solid white;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.9);
+            color: #333;
+        }
+
+        .load-btn {
+            background: white;
+            color: #1e3c72;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1em;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+
+        .load-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }
 
         .controls {
@@ -180,8 +227,18 @@
             box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }
 
-        button:active {
-            transform: translateY(0);
+        .score {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .score-item {
+            padding: 10px 20px;
+            border-radius: 10px;
+            background: #f0f0f0;
         }
 
         .game-info {
@@ -203,27 +260,28 @@
             margin: 5px 0;
         }
 
-        .score {
-            display: flex;
-            justify-content: space-around;
-            margin: 20px 0;
-            font-size: 1.2em;
-            font-weight: bold;
-        }
-
-        .score-item {
-            padding: 10px 20px;
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #4caf50;
+            color: white;
+            padding: 15px 25px;
             border-radius: 10px;
-            background: #f0f0f0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            animation: slideIn 0.3s ease-out;
+            z-index: 1000;
         }
 
-        .score-item.white-score {
-            color: #333;
-        }
-
-        .score-item.black-score {
-            color: #222;
-            background: #ddd;
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
         }
     </style>
 </head>
@@ -233,16 +291,21 @@
         <div class="status" id="status">Vez das Brancas</div>
         
         <div class="score">
-            <div class="score-item white-score">Brancas: <span id="white-count">12</span></div>
-            <div class="score-item black-score">Pretas: <span id="black-count">12</span></div>
+            <div class="score-item">Brancas: <span id="white-count">12</span></div>
+            <div class="score-item">Pretas: <span id="black-count">12</span></div>
         </div>
 
         <div class="board" id="board"></div>
 
-        <div class="checksum-container">
-            <div class="checksum-label">🔢 Casa 10 - Checksum Numérico</div>
-            <div class="checksum-value" id="checksum">0</div>
-            <div class="checksum-info">Representação única do estado atual do jogo (32 casas jogáveis)</div>
+        <div class="checksum-section">
+            <div class="checksum-label">🔢 Casa 10 - Checksum (SAÍDA)</div>
+            <div class="checksum-display" id="checksum">0</div>
+            <button class="copy-btn" onclick="copyChecksum()">📋 Copiar Checksum</button>
+            
+            <div class="input-section">
+                <input type="text" class="checksum-input" id="checksumInput" placeholder="Cole o checksum aqui...">
+                <button class="load-btn" onclick="loadFromChecksum()">📥 Carregar</button>
+            </div>
         </div>
 
         <div class="controls">
@@ -250,11 +313,10 @@
         </div>
 
         <div class="game-info">
-            <h3>📋 Sobre o Checksum</h3>
-            <p><strong>Casa 10</strong> mostra um número único que representa o estado inteiro do jogo.</p>
-            <p>Cada casa jogável: 0=vazio, 1=branca, 2=preta, 3=dama branca, 4=dama preta</p>
-            <p>O checksum é calculado usando base 5: posição[i] × 5^i (32 casas)</p>
-            <p>Isso garante que cada estado do jogo tenha um número único!</p>
+            <h3>📋 Como Usar</h3>
+            <p><strong>Exportar:</strong> Copie o checksum após cada jogada e envie para o outro jogador.</p>
+            <p><strong>Importar:</strong> Cole o checksum recebido e clique em "Carregar" para recriar o jogo.</p>
+            <p>Cada checksum representa um estado único do jogo!</p>
         </div>
     </div>
 
@@ -263,13 +325,10 @@
         let currentPlayer = 'white';
         let selectedPiece = null;
         let validMoves = [];
-        let mustCapture = false;
 
-        // Inicializar tabuleiro
         function initBoard() {
             board = Array(8).fill(null).map(() => Array(8).fill(null));
             
-            // Peças pretas (linhas 0-2)
             for (let row = 0; row < 3; row++) {
                 for (let col = 0; col < 8; col++) {
                     if ((row + col) % 2 === 1) {
@@ -278,7 +337,6 @@
                 }
             }
             
-            // Peças brancas (linhas 5-7)
             for (let row = 5; row < 8; row++) {
                 for (let col = 0; col < 8; col++) {
                     if ((row + col) % 2 === 1) {
@@ -317,15 +375,109 @@
             updateChecksum();
         }
 
+        function calculateChecksum() {
+            let checksum = 0n;
+            let position = 0;
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if ((row + col) % 2 === 1) {
+                        let value = 0;
+                        if (board[row][col]) {
+                            if (board[row][col].color === 'white') {
+                                value = board[row][col].king ? 3 : 1;
+                            } else {
+                                value = board[row][col].king ? 4 : 2;
+                            }
+                        }
+                        
+                        checksum += BigInt(value) * (5n ** BigInt(position));
+                        position++;
+                    }
+                }
+            }
+            
+            return checksum.toString();
+        }
+
+        function decodeChecksum(checksumStr) {
+            let checksum = BigInt(checksumStr);
+            const newBoard = Array(8).fill(null).map(() => Array(8).fill(null));
+            let position = 0;
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if ((row + col) % 2 === 1) {
+                        const power = 5n ** BigInt(position);
+                        const value = Number((checksum / power) % 5n);
+                        
+                        if (value === 1) {
+                            newBoard[row][col] = { color: 'white', king: false };
+                        } else if (value === 2) {
+                            newBoard[row][col] = { color: 'black', king: false };
+                        } else if (value === 3) {
+                            newBoard[row][col] = { color: 'white', king: true };
+                        } else if (value === 4) {
+                            newBoard[row][col] = { color: 'black', king: true };
+                        }
+                        
+                        position++;
+                    }
+                }
+            }
+            
+            return newBoard;
+        }
+
+        function updateChecksum() {
+            const checksum = calculateChecksum();
+            document.getElementById('checksum').textContent = checksum;
+        }
+
+        function copyChecksum() {
+            const checksum = document.getElementById('checksum').textContent;
+            navigator.clipboard.writeText(checksum).then(() => {
+                showNotification('✅ Checksum copiado!');
+            });
+        }
+
+        function loadFromChecksum() {
+            const input = document.getElementById('checksumInput').value.trim();
+            
+            if (!input) {
+                showNotification('❌ Cole um checksum válido!', 'error');
+                return;
+            }
+            
+            try {
+                board = decodeChecksum(input);
+                renderBoard();
+                
+                const whitePieces = countPieces('white');
+                const blackPieces = countPieces('black');
+                
+                if (whitePieces === 0) {
+                    document.getElementById('status').textContent = '🎉 Pretas venceram!';
+                } else if (blackPieces === 0) {
+                    document.getElementById('status').textContent = '🎉 Brancas venceram!';
+                } else {
+                    document.getElementById('status').textContent = `Vez das ${currentPlayer === 'white' ? 'Brancas' : 'Pretas'}`;
+                }
+                
+                showNotification('✅ Jogo carregado com sucesso!');
+                document.getElementById('checksumInput').value = '';
+                
+            } catch (error) {
+                showNotification('❌ Checksum inválido!', 'error');
+            }
+        }
+
         function handleCellClick(row, col) {
             const piece = board[row][col];
             
-            // Se clicou em uma peça do jogador atual
             if (piece && piece.color === currentPlayer) {
                 selectPiece(row, col);
-            } 
-            // Se clicou em uma casa válida para mover
-            else if (selectedPiece && isValidMove(row, col)) {
+            } else if (selectedPiece && isValidMove(row, col)) {
                 movePiece(selectedPiece.row, selectedPiece.col, row, col);
             }
         }
@@ -335,13 +487,10 @@
             selectedPiece = { row, col };
             
             validMoves = getValidMoves(row, col);
-            mustCapture = validMoves.some(move => move.captured);
             
-            // Destacar peça selecionada
             const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
             cell.classList.add('selected');
             
-            // Destacar movimentos válidos
             validMoves.forEach(move => {
                 const moveCell = document.querySelector(`[data-row="${move.row}"][data-col="${move.col}"]`);
                 moveCell.classList.add('valid-move');
@@ -367,7 +516,6 @@
                     ? [[-1, -1], [-1, 1]]
                     : [[1, -1], [1, 1]];
             
-            // Movimentos normais
             directions.forEach(([dRow, dCol]) => {
                 const newRow = row + dRow;
                 const newCol = col + dCol;
@@ -377,7 +525,6 @@
                 }
             });
             
-            // Capturas
             directions.forEach(([dRow, dCol]) => {
                 const midRow = row + dRow;
                 const midCol = col + dCol;
@@ -396,7 +543,6 @@
                 }
             });
             
-            // Se há capturas disponíveis, deve capturar
             return captures.length > 0 ? captures : moves;
         }
 
@@ -411,16 +557,13 @@
         function movePiece(fromRow, fromCol, toRow, toCol) {
             const move = validMoves.find(m => m.row === toRow && m.col === toCol);
             
-            // Mover peça
             board[toRow][toCol] = board[fromRow][fromCol];
             board[fromRow][fromCol] = null;
             
-            // Capturar peça se necessário
             if (move.captured) {
                 board[move.captured.row][move.captured.col] = null;
             }
             
-            // Promover a dama
             if (board[toRow][toCol].color === 'white' && toRow === 0) {
                 board[toRow][toCol].king = true;
             }
@@ -430,7 +573,6 @@
             
             clearSelection();
             
-            // Verificar vitória
             const whitePieces = countPieces('white');
             const blackPieces = countPieces('black');
             
@@ -443,7 +585,6 @@
                 return;
             }
             
-            // Trocar jogador
             currentPlayer = currentPlayer === 'white' ? 'black' : 'white';
             document.getElementById('status').textContent = 
                 `Vez das ${currentPlayer === 'white' ? 'Brancas' : 'Pretas'}`;
@@ -468,37 +609,6 @@
             document.getElementById('black-count').textContent = countPieces('black');
         }
 
-        function calculateChecksum() {
-            let checksum = 0n; // Usar BigInt para números grandes
-            let position = 0;
-            
-            for (let row = 0; row < 8; row++) {
-                for (let col = 0; col < 8; col++) {
-                    if ((row + col) % 2 === 1) { // Apenas casas jogáveis
-                        let value = 0;
-                        if (board[row][col]) {
-                            if (board[row][col].color === 'white') {
-                                value = board[row][col].king ? 3 : 1;
-                            } else {
-                                value = board[row][col].king ? 4 : 2;
-                            }
-                        }
-                        
-                        // Base 5: posição[i] * 5^i
-                        checksum += BigInt(value) * (5n ** BigInt(position));
-                        position++;
-                    }
-                }
-            }
-            
-            return checksum.toString();
-        }
-
-        function updateChecksum() {
-            const checksum = calculateChecksum();
-            document.getElementById('checksum').textContent = checksum;
-        }
-
         function resetGame() {
             currentPlayer = 'white';
             selectedPiece = null;
@@ -508,7 +618,20 @@
             renderBoard();
         }
 
-        // Inicializar jogo
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.textContent = message;
+            if (type === 'error') {
+                notification.style.background = '#f44336';
+            }
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
         initBoard();
         renderBoard();
     </script>
