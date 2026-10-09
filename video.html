@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reprodutor de Vídeo MP4 (HandBrake)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1e1e24;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #ff4757;
+            margin-bottom: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background: #2f3542;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+
+        .drop-zone {
+            border: 2px dashed #ff4757;
+            border-radius: 8px;
+            padding: 30px;
+            margin-bottom: 20px;
+            cursor: pointer;
+            background: #3a3f50;
+            transition: background 0.3s;
+        }
+
+        .drop-zone:hover {
+            background: #464b5e;
+        }
+
+        .drop-zone p {
+            margin: 0;
+            font-size: 1.1rem;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        video {
+            width: 100%;
+            border-radius: 8px;
+            background-color: #000;
+            margin-top: 15px;
+            display: none; /* Oculto até que um arquivo seja selecionado */
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+
+        .info-box {
+            margin-top: 15px;
+            font-size: 0.9rem;
+            color: #a4b0be;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Reprodutor MP4 Local</h1>
+        <p>Desenvolvido para abrir vídeos convertidos (HandBrake / FFmpeg)</p>
+        
+        <!-- Zona de Drop e Seleção de Arquivo -->
+        <div class="drop-zone" id="dropZone">
+            <p>Arraste seu arquivo de vídeo aqui ou <strong>clique para buscar</strong></p>
+            <input type="file" id="fileInput" accept="video/mp4, video/x-m4v">
+        </div>
+
+        <!-- Tag de vídeo configurada com os tipos MIME recomendados -->
+        <video id="videoPlayer" controls>
+            <!-- O navegador tentará ler o MP4 tradicional ou o formato M4V do HandBrake -->
+            <source id="videoSource" type="video/mp4; codecs='avc1.42E01E, mp4a.40.2'">
+            Seu navegador não suporta a reprodução deste formato ou tipo MIME.
+        </video>
+
+        <div class="info-box" id="infoBox">
+            Nenhum arquivo carregado.
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const videoPlayer = document.getElementById('videoPlayer');
+        const videoSource = document.getElementById('videoSource');
+        const infoBox = document.getElementById('infoBox');
+
+        // Clicar na zona abre o seletor de arquivos
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        // Eventos de Arrastar e Soltar (Drag and Drop)
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.style.background = '#464b5e';
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.style.background = '#3a3f50';
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.background = '#3a3f50';
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                carregarVideo(files[0]);
+            }
+        });
+
+        // Evento de seleção pelo menu clássico
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                carregarVideo(e.target.files[0]);
+            }
+        });
+
+        // Função principal para carregar o vídeo no player com o blob correto
+        function carregarVideo(file) {
+            // Força a detecção do MIME Type apropriado para o ecossistema MP4
+            let mimeType = file.type || "video/mp4";
+            
+            // Cria uma URL temporária segura do arquivo local
+            const fileURL = URL.createObjectURL(file);
+            
+            // Alimenta o Player
+            videoSource.src = fileURL;
+            videoSource.type = mimeType;
+            
+            // Recarrega o motor do player de vídeo e exibe na tela
+            videoPlayer.style.display = "block";
+            videoPlayer.load();
+            videoPlayer.play();
+
+            // Atualiza texto de informações na tela
+            infoBox.innerHTML = `<strong>Arquivo:</strong> ${file.name} <br> 
+                                 <strong>Tamanho:</strong> ${(file.size / (1024 * 1024)).toFixed(2)} MB <br> 
+                                 <strong>Tipo MIME Identificado:</strong> ${mimeType}`;
+        }
+    </script>
+</body>
+</html>
