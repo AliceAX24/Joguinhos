@@ -106,6 +106,18 @@
             border: 3px solid #4caf50;
         }
 
+        .timer.timeout {
+            background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%) !important;
+            color: white !important;
+            border: 3px solid #b71c1c;
+            animation: timeoutPulse 1s infinite;
+        }
+
+        @keyframes timeoutPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
         .timer-label {
             font-size: 0.5em;
             margin-bottom: 10px;
@@ -722,6 +734,23 @@
                 moveCount = gameState.moveCount;
                 enPassantTarget = gameState.enPassantTarget;
                 castlingRights = gameState.castlingRights;
+                
+                // Verificar se o jogo já acabou por tempo
+                if (whiteTime <= 0 || blackTime <= 0) {
+                    gameActive = false;
+                    if (whiteTime <= 0) {
+                        document.getElementById('status').textContent = '⏰ Tempo das Brancas esgotado! Pretas venceram!';
+                        document.getElementById('white-timer').classList.add('timeout');
+                    } else {
+                        document.getElementById('status').textContent = '⏰ Tempo das Pretas esgotado! Brancas venceram!';
+                        document.getElementById('black-timer').classList.add('timeout');
+                    }
+                    renderBoard();
+                    showNotification('⏰ Jogo terminado por tempo!');
+                    document.getElementById('checksumInput').value = '';
+                    return;
+                }
+                
                 gameActive = true;
                 
                 renderBoard();
@@ -1156,14 +1185,22 @@
 
         function startTimer() {
             stopTimer();
+            
+            // Não iniciar timer se o jogo já acabou
+            if (!gameActive) return;
+            
             timerInterval = setInterval(() => {
-                if (!gameActive) return;
+                if (!gameActive) {
+                    stopTimer();
+                    return;
+                }
                 
                 if (currentPlayer === 'white') {
                     whiteTime--;
                     if (whiteTime <= 0) {
                         whiteTime = 0;
                         document.getElementById('status').textContent = '⏰ Tempo das Brancas esgotado! Pretas venceram!';
+                        document.getElementById('white-timer').classList.add('timeout');
                         gameActive = false;
                         stopTimer();
                     }
@@ -1172,6 +1209,7 @@
                     if (blackTime <= 0) {
                         blackTime = 0;
                         document.getElementById('status').textContent = '⏰ Tempo das Pretas esgotado! Brancas venceram!';
+                        document.getElementById('black-timer').classList.add('timeout');
                         gameActive = false;
                         stopTimer();
                     }
@@ -1199,6 +1237,14 @@
             document.getElementById('white-time').textContent = formatTime(whiteTime);
             document.getElementById('black-time').textContent = formatTime(blackTime);
             
+            // Remover classe timeout se o tempo for maior que 0
+            if (whiteTime > 0) {
+                document.getElementById('white-timer').classList.remove('timeout');
+            }
+            if (blackTime > 0) {
+                document.getElementById('black-timer').classList.remove('timeout');
+            }
+            
             document.getElementById('white-timer').classList.toggle('active', currentPlayer === 'white' && gameActive);
             document.getElementById('black-timer').classList.toggle('active', currentPlayer === 'black' && gameActive);
         }
@@ -1217,6 +1263,10 @@
             blackTime = initialTime;
             moveCount = 0;
             gameActive = true;
+            
+            // Remover classes timeout
+            document.getElementById('white-timer').classList.remove('timeout');
+            document.getElementById('black-timer').classList.remove('timeout');
             
             document.getElementById('status').textContent = `Vez das Brancas - ${formatTime(initialTime)}`;
             stopTimer();
