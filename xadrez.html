@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xadrez com Import/Export</title>
+    <title>Xadrez Completo com Sincronização</title>
     <style>
         * {
             margin: 0;
@@ -28,13 +28,41 @@
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             text-align: center;
-            max-width: 1000px;
+            max-width: 1100px;
         }
 
         h1 {
             color: #333;
             margin-bottom: 20px;
             font-size: 2.5em;
+        }
+
+        .settings {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .setting-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .setting-group label {
+            font-size: 0.9em;
+            color: #666;
+            font-weight: bold;
+        }
+
+        .setting-group input, .setting-group select {
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            min-width: 120px;
         }
 
         .game-layout {
@@ -75,6 +103,7 @@
         .timer.active {
             transform: scale(1.05);
             box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+            border: 3px solid #4caf50;
         }
 
         .timer-label {
@@ -134,6 +163,16 @@
             background: #f44336 !important;
         }
 
+        .cell.check {
+            background: #ff5722 !important;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: inset 0 0 10px rgba(255,0,0,0.5); }
+            50% { box-shadow: inset 0 0 20px rgba(255,0,0,0.8); }
+        }
+
         .piece {
             user-select: none;
             cursor: pointer;
@@ -159,7 +198,7 @@
         }
 
         .checksum-display {
-            font-size: 1.3em;
+            font-size: 1.1em;
             font-weight: bold;
             font-family: 'Courier New', monospace;
             background: rgba(255,255,255,0.2);
@@ -260,6 +299,7 @@
             background: #f8f9fa;
             border-radius: 10px;
             text-align: left;
+            max-width: 800px;
         }
 
         .game-info h3 {
@@ -296,11 +336,67 @@
                 opacity: 1;
             }
         }
+
+        .promotion-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .promotion-modal.active {
+            display: flex;
+        }
+
+        .promotion-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .promotion-options {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .promotion-piece {
+            font-size: 3em;
+            cursor: pointer;
+            padding: 20px;
+            border: 3px solid #ddd;
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+
+        .promotion-piece:hover {
+            background: #f0f0f0;
+            transform: scale(1.1);
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>♔ Xadrez com Relógio</h1>
+        <h1>♔ Xadrez Completo</h1>
+        
+        <div class="settings">
+            <div class="setting-group">
+                <label>Tempo Inicial (minutos)</label>
+                <input type="number" id="initialTime" min="1" max="60" value="15">
+            </div>
+            <div class="setting-group">
+                <label>Incremento (segundos)</label>
+                <input type="number" id="increment" min="0" max="60" value="2">
+            </div>
+        </div>
+
         <div class="status" id="status">Vez das Brancas - 15:00</div>
         
         <div class="game-layout">
@@ -319,12 +415,12 @@
         </div>
 
         <div class="checksum-section">
-            <div class="checksum-label">🔢 Casa 10 - Checksum (SAÍDA)</div>
+            <div class="checksum-label">🔢 Código do Jogo (SAÍDA)</div>
             <div class="checksum-display" id="checksum">0</div>
-            <button class="copy-btn" onclick="copyChecksum()">📋 Copiar Checksum</button>
+            <button class="copy-btn" onclick="copyChecksum()">📋 Copiar Código</button>
             
             <div class="input-section">
-                <input type="text" class="checksum-input" id="checksumInput" placeholder="Cole o checksum aqui...">
+                <input type="text" class="checksum-input" id="checksumInput" placeholder="Cole o código aqui...">
                 <button class="load-btn" onclick="loadFromChecksum()">📥 Carregar</button>
             </div>
         </div>
@@ -334,10 +430,19 @@
         </div>
 
         <div class="game-info">
-            <h3>📋 Como Usar</h3>
-            <p><strong>Exportar:</strong> Copie o checksum após cada jogada e envie para o outro jogador.</p>
-            <p><strong>Importar:</strong> Cole o checksum recebido e clique em "Carregar" para recriar o jogo com posição e tempo.</p>
-            <p>Cada checksum representa um estado único: posição + tempo + turno!</p>
+            <h3>📋 Como Jogar</h3>
+            <p><strong>1.</strong> Configure o tempo inicial e incremento antes de começar.</p>
+            <p><strong>2.</strong> Após cada jogada, copie o código e envie para o oponente.</p>
+            <p><strong>3.</strong> O oponente cola o código, faz sua jogada e copia novamente.</p>
+            <p><strong>4.</strong> O tempo só conta quando é sua vez de jogar.</p>
+            <p><strong>Regras:</strong> Roque, En Passant, Promoção e Afogamento funcionam!</p>
+        </div>
+    </div>
+
+    <div class="promotion-modal" id="promotionModal">
+        <div class="promotion-content">
+            <h2>Promover peão para:</h2>
+            <div class="promotion-options" id="promotionOptions"></div>
         </div>
     </div>
 
@@ -353,13 +458,38 @@
         let validMoves = [];
         let whiteTime = 900;
         let blackTime = 900;
+        let initialTime = 900;
+        let increment = 2;
         let timerInterval = null;
         let gameActive = true;
         let moveCount = 0;
+        let enPassantTarget = null;
+        let castlingRights = { white: { kingSide: true, queenSide: true }, black: { kingSide: true, queenSide: true } };
+        let promotionCallback = null;
 
-        // Constantes para codificação
-        const BASE = 13n ** 64n;
-        const TIME_MAX = 901n; // 0 a 900 segundos
+        // Base62 characters
+        const BASE62_CHARS = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+        function encodeBase62(num) {
+            if (num === 0n) return '0';
+            let result = '';
+            let n = num;
+            while (n > 0n) {
+                result = BASE62_CHARS[Number(n % 62n)] + result;
+                n = n / 62n;
+            }
+            return result;
+        }
+
+        function decodeBase62(str) {
+            let result = 0n;
+            for (let i = 0; i < str.length; i++) {
+                const char = str[i];
+                const value = BigInt(BASE62_CHARS.indexOf(char));
+                result = result * 62n + value;
+            }
+            return result;
+        }
 
         function initBoard() {
             board = Array(8).fill(null).map(() => Array(8).fill(null));
@@ -387,6 +517,9 @@
             for (let col = 0; col < 8; col++) {
                 board[6][col] = { type: 'pawn', color: 'white' };
             }
+
+            enPassantTarget = null;
+            castlingRights = { white: { kingSide: true, queenSide: true }, black: { kingSide: true, queenSide: true } };
         }
 
         function renderBoard() {
@@ -417,8 +550,9 @@
         }
 
         function calculateChecksum() {
-            // 1) Codificar posição (64 casas, base 13)
-            let posChecksum = 0n;
+            let checksum = 0n;
+            
+            // Posição (64 casas, base 13)
             for (let row = 0; row < 8; row++) {
                 for (let col = 0; col < 8; col++) {
                     let value = 0;
@@ -427,49 +561,83 @@
                         value = board[row][col].color === 'white' ? typeValue : typeValue + 6;
                     }
                     const position = row * 8 + col;
-                    posChecksum += BigInt(value) * (13n ** BigInt(position));
+                    checksum += BigInt(value) * (13n ** BigInt(position));
                 }
             }
             
-            // 2) Codificar tudo junto:
-            //    checksum = posicao + whiteTime * BASE + blackTime * BASE * TIME_MAX + turn * BASE * TIME_MAX * TIME_MAX + moveCount * BASE * TIME_MAX * TIME_MAX * 2
-            const turn = currentPlayer === 'white' ? 0n : 1n;
+            // En passant target
+            let epValue = 0;
+            if (enPassantTarget) {
+                epValue = enPassantTarget.row * 8 + enPassantTarget.col + 1;
+            }
+            checksum += BigInt(epValue) * (13n ** 64n);
             
-            let checksum = posChecksum;
+            // Castling rights (4 bits)
+            let castlingValue = 0;
+            if (castlingRights.white.kingSide) castlingValue += 1;
+            if (castlingRights.white.queenSide) castlingValue += 2;
+            if (castlingRights.black.kingSide) castlingValue += 4;
+            if (castlingRights.black.queenSide) castlingValue += 8;
+            checksum += BigInt(castlingValue) * (13n ** 64n) * 65n;
+            
+            // Tempos e turno
+            const BASE = 13n ** 64n * 65n * 16n;
             checksum += BigInt(whiteTime) * BASE;
-            checksum += BigInt(blackTime) * BASE * TIME_MAX;
-            checksum += turn * BASE * TIME_MAX * TIME_MAX;
-            checksum += BigInt(moveCount) * BASE * TIME_MAX * TIME_MAX * 2n;
+            checksum += BigInt(blackTime) * BASE * 3601n;
             
-            return checksum.toString();
+            const turn = currentPlayer === 'white' ? 0n : 1n;
+            checksum += turn * BASE * 3601n * 3601n;
+            
+            checksum += BigInt(moveCount) * BASE * 3601n * 3601n * 2n;
+            
+            return encodeBase62(checksum);
         }
 
         function decodeChecksum(checksumStr) {
-            let checksum = BigInt(checksumStr);
+            let checksum = decodeBase62(checksumStr);
             const newBoard = Array(8).fill(null).map(() => Array(8).fill(null));
             
-            // Extrair na ordem inversa da codificação
+            const BASE = 13n ** 64n * 65n * 16n;
             
-            // 1) moveCount
-            const moveCountMultiplier = BASE * TIME_MAX * TIME_MAX * 2n;
+            // Extrair moveCount
+            const moveCountMultiplier = BASE * 3601n * 3601n * 2n;
             const decodedMoveCount = Number(checksum / moveCountMultiplier);
             checksum = checksum % moveCountMultiplier;
             
-            // 2) turn
-            const turnMultiplier = BASE * TIME_MAX * TIME_MAX;
+            // Extrair turno
+            const turnMultiplier = BASE * 3601n * 3601n;
             const turn = Number(checksum / turnMultiplier);
             checksum = checksum % turnMultiplier;
             
-            // 3) blackTime
-            const blackTimeMultiplier = BASE * TIME_MAX;
+            // Extrair blackTime
+            const blackTimeMultiplier = BASE * 3601n;
             const decodedBlackTime = Number(checksum / blackTimeMultiplier);
             checksum = checksum % blackTimeMultiplier;
             
-            // 4) whiteTime
+            // Extrair whiteTime
             const decodedWhiteTime = Number(checksum / BASE);
             checksum = checksum % BASE;
             
-            // 5) posição (o que sobrou)
+            // Extrair castling rights
+            const castlingValue = Number(checksum / (13n ** 64n * 65n));
+            checksum = checksum % (13n ** 64n * 65n);
+            
+            const newCastlingRights = {
+                white: { kingSide: (castlingValue & 1) === 1, queenSide: (castlingValue & 2) === 2 },
+                black: { kingSide: (castlingValue & 4) === 4, queenSide: (castlingValue & 8) === 8 }
+            };
+            
+            // Extrair en passant
+            const epValue = Number(checksum / (13n ** 64n));
+            checksum = checksum % (13n ** 64n);
+            
+            let newEnPassantTarget = null;
+            if (epValue > 0) {
+                const epPos = epValue - 1;
+                newEnPassantTarget = { row: Math.floor(epPos / 8), col: epPos % 8 };
+            }
+            
+            // Extrair posição
             for (let row = 0; row < 8; row++) {
                 for (let col = 0; col < 8; col++) {
                     const position = row * 8 + col;
@@ -498,24 +666,10 @@
                 whiteTime: decodedWhiteTime,
                 blackTime: decodedBlackTime,
                 turn: turn === 0 ? 'white' : 'black',
-                moveCount: decodedMoveCount
+                moveCount: decodedMoveCount,
+                enPassantTarget: newEnPassantTarget,
+                castlingRights: newCastlingRights
             };
-        }
-
-        function isInitialPosition(b) {
-            // Verifica se o tabuleiro está na posição inicial
-            for (let row = 2; row < 6; row++) {
-                for (let col = 0; col < 8; col++) {
-                    if (b[row][col] !== null) return false;
-                }
-            }
-            for (let col = 0; col < 8; col++) {
-                if (!b[0][col] || b[0][col].color !== 'black') return false;
-                if (!b[1][col] || b[1][col].color !== 'black' || b[1][col].type !== 'pawn') return false;
-                if (!b[6][col] || b[6][col].color !== 'white' || b[6][col].type !== 'pawn') return false;
-                if (!b[7][col] || b[7][col].color !== 'white') return false;
-            }
-            return true;
         }
 
         function updateChecksum() {
@@ -525,17 +679,20 @@
 
         function copyChecksum() {
             const checksum = document.getElementById('checksum').textContent;
+            
+            // Pausar timer ao copiar
+            stopTimer();
+            
             navigator.clipboard.writeText(checksum).then(() => {
-                showNotification('✅ Checksum copiado!');
+                showNotification('✅ Código copiado! Tempo pausado.');
             }).catch(() => {
-                // Fallback para navegadores que não suportam clipboard
                 const textarea = document.createElement('textarea');
                 textarea.value = checksum;
                 document.body.appendChild(textarea);
                 textarea.select();
                 document.execCommand('copy');
                 document.body.removeChild(textarea);
-                showNotification('✅ Checksum copiado!');
+                showNotification('✅ Código copiado! Tempo pausado.');
             });
         }
 
@@ -543,7 +700,7 @@
             const input = document.getElementById('checksumInput').value.trim();
             
             if (!input) {
-                showNotification('❌ Cole um checksum válido!', 'error');
+                showNotification('❌ Cole um código válido!', 'error');
                 return;
             }
             
@@ -552,22 +709,9 @@
                 
                 const gameState = decodeChecksum(input);
                 
-                // Validar tempos
-                if (gameState.whiteTime < 0 || gameState.whiteTime > 900 ||
-                    gameState.blackTime < 0 || gameState.blackTime > 900) {
-                    showNotification('❌ Tempos inválidos no checksum!', 'error');
-                    return;
-                }
-                
-                // Não permitir pretas jogarem primeiro (posição inicial)
-                if (isInitialPosition(gameState.board) && gameState.turn === 'black') {
-                    showNotification('❌ Pretas não podem jogar primeiro!', 'error');
-                    return;
-                }
-                
-                // Não permitir pretas jogarem primeiro (nenhum movimento feito)
-                if (gameState.moveCount === 0 && gameState.turn === 'black') {
-                    showNotification('❌ Pretas não podem jogar primeiro!', 'error');
+                if (gameState.whiteTime < 0 || gameState.whiteTime > 3600 ||
+                    gameState.blackTime < 0 || gameState.blackTime > 3600) {
+                    showNotification('❌ Tempos inválidos!', 'error');
                     return;
                 }
                 
@@ -576,9 +720,13 @@
                 blackTime = gameState.blackTime;
                 currentPlayer = gameState.turn;
                 moveCount = gameState.moveCount;
+                enPassantTarget = gameState.enPassantTarget;
+                castlingRights = gameState.castlingRights;
                 gameActive = true;
                 
                 renderBoard();
+                
+                // Iniciar timer apenas se for a vez do jogador atual
                 startTimer();
                 
                 const formatTime = (s) => {
@@ -590,12 +738,12 @@
                 document.getElementById('status').textContent = 
                     `Vez das ${currentPlayer === 'white' ? 'Brancas' : 'Pretas'} - B:${formatTime(whiteTime)} P:${formatTime(blackTime)}`;
                 
-                showNotification('✅ Jogo carregado com sucesso!');
+                showNotification('✅ Jogo carregado!');
                 document.getElementById('checksumInput').value = '';
                 
             } catch (error) {
                 console.error(error);
-                showNotification('❌ Checksum inválido!', 'error');
+                showNotification('❌ Código inválido!', 'error');
             }
         }
 
@@ -646,14 +794,17 @@
                 const direction = piece.color === 'white' ? -1 : 1;
                 const startRow = piece.color === 'white' ? 6 : 1;
                 
+                // Movimento simples
                 if (isValidPosition(row + direction, col) && !board[row + direction][col]) {
                     moves.push({ row: row + direction, col });
                     
+                    // Movimento duplo inicial
                     if (row === startRow && !board[row + 2 * direction][col]) {
                         moves.push({ row: row + 2 * direction, col });
                     }
                 }
                 
+                // Capturas normais
                 [-1, 1].forEach(dc => {
                     const newRow = row + direction;
                     const newCol = col + dc;
@@ -663,6 +814,16 @@
                         moves.push({ row: newRow, col: newCol });
                     }
                 });
+                
+                // En passant
+                if (enPassantTarget) {
+                    const newRow = row + direction;
+                    if (newRow === enPassantTarget.row) {
+                        if (col - 1 === enPassantTarget.col || col + 1 === enPassantTarget.col) {
+                            moves.push({ row: newRow, col: enPassantTarget.col, enPassant: true });
+                        }
+                    }
+                }
             } else if (piece.type === 'rook') {
                 moves.push(...getLinearMoves(row, col, [[1,0],[-1,0],[0,1],[0,-1]], piece.color));
             } else if (piece.type === 'bishop') {
@@ -687,9 +848,55 @@
                         moves.push({ row: newRow, col: newCol });
                     }
                 });
+                
+                // Roque
+                const castlingRow = piece.color === 'white' ? 7 : 0;
+                if (row === castlingRow && col === 4) {
+                    // Roque do lado do rei
+                    if (castlingRights[piece.color].kingSide &&
+                        !board[castlingRow][5] && !board[castlingRow][6] &&
+                        board[castlingRow][7] && board[castlingRow][7].type === 'rook' &&
+                        !isSquareAttacked(castlingRow, 4, piece.color) &&
+                        !isSquareAttacked(castlingRow, 5, piece.color) &&
+                        !isSquareAttacked(castlingRow, 6, piece.color)) {
+                        moves.push({ row: castlingRow, col: 6, castling: 'king' });
+                    }
+                    
+                    // Roque do lado da rainha
+                    if (castlingRights[piece.color].queenSide &&
+                        !board[castlingRow][1] && !board[castlingRow][2] && !board[castlingRow][3] &&
+                        board[castlingRow][0] && board[castlingRow][0].type === 'rook' &&
+                        !isSquareAttacked(castlingRow, 4, piece.color) &&
+                        !isSquareAttacked(castlingRow, 3, piece.color) &&
+                        !isSquareAttacked(castlingRow, 2, piece.color)) {
+                        moves.push({ row: castlingRow, col: 2, castling: 'queen' });
+                    }
+                }
             }
             
-            return moves;
+            // Filtrar movimentos que deixam o rei em xeque
+            return moves.filter(move => {
+                const tempBoard = JSON.parse(JSON.stringify(board));
+                const tempPiece = board[row][col];
+                board[move.row][move.col] = tempPiece;
+                board[row][col] = null;
+                
+                // En passant
+                if (move.enPassant) {
+                    board[row][move.col] = null;
+                }
+                
+                const inCheck = isInCheck(tempPiece.color);
+                
+                // Restaurar
+                for (let r = 0; r < 8; r++) {
+                    for (let c = 0; c < 8; c++) {
+                        board[r][c] = tempBoard[r][c];
+                    }
+                }
+                
+                return !inCheck;
+            });
         }
 
         function getLinearMoves(row, col, directions, color) {
@@ -721,25 +928,228 @@
             return validMoves.some(move => move.row === row && move.col === col);
         }
 
-        function movePiece(fromRow, fromCol, toRow, toCol) {
-            board[toRow][toCol] = board[fromRow][fromCol];
-            board[fromRow][fromCol] = null;
+        function isSquareAttacked(row, col, byColor) {
+            const opponentColor = byColor === 'white' ? 'black' : 'white';
             
-            if (board[toRow][toCol].type === 'pawn') {
-                if ((board[toRow][toCol].color === 'white' && toRow === 0) ||
-                    (board[toRow][toCol].color === 'black' && toRow === 7)) {
-                    board[toRow][toCol].type = 'queen';
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const piece = board[r][c];
+                    if (piece && piece.color === opponentColor) {
+                        const moves = getRawMoves(r, c);
+                        if (moves.some(m => m.row === row && m.col === col)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        function getRawMoves(row, col) {
+            const piece = board[row][col];
+            const moves = [];
+            
+            if (piece.type === 'pawn') {
+                const direction = piece.color === 'white' ? -1 : 1;
+                [-1, 1].forEach(dc => {
+                    const newRow = row + direction;
+                    const newCol = col + dc;
+                    if (isValidPosition(newRow, newCol)) {
+                        moves.push({ row: newRow, col: newCol });
+                    }
+                });
+            } else if (piece.type === 'knight') {
+                [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]].forEach(([dr, dc]) => {
+                    const newRow = row + dr;
+                    const newCol = col + dc;
+                    if (isValidPosition(newRow, newCol)) {
+                        moves.push({ row: newRow, col: newCol });
+                    }
+                });
+            } else if (piece.type === 'king') {
+                [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]].forEach(([dr, dc]) => {
+                    const newRow = row + dr;
+                    const newCol = col + dc;
+                    if (isValidPosition(newRow, newCol)) {
+                        moves.push({ row: newRow, col: newCol });
+                    }
+                });
+            } else if (piece.type === 'rook' || piece.type === 'queen') {
+                moves.push(...getLinearMoves(row, col, [[1,0],[-1,0],[0,1],[0,-1]], piece.color));
+            }
+            
+            if (piece.type === 'bishop' || piece.type === 'queen') {
+                moves.push(...getLinearMoves(row, col, [[1,1],[1,-1],[-1,1],[-1,-1]], piece.color));
+            }
+            
+            return moves;
+        }
+
+        function isInCheck(color) {
+            // Encontrar rei
+            let kingPos = null;
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if (board[row][col] && board[row][col].type === 'king' && board[row][col].color === color) {
+                        kingPos = { row, col };
+                        break;
+                    }
+                }
+                if (kingPos) break;
+            }
+            
+            if (!kingPos) return false;
+            
+            return isSquareAttacked(kingPos.row, kingPos.col, color);
+        }
+
+        function isCheckmate(color) {
+            if (!isInCheck(color)) return false;
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if (board[row][col] && board[row][col].color === color) {
+                        if (getValidMoves(row, col).length > 0) {
+                            return false;
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+
+        function isStalemate(color) {
+            if (isInCheck(color)) return false;
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if (board[row][col] && board[row][col].color === color) {
+                        if (getValidMoves(row, col).length > 0) {
+                            return false;
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+
+        function playCheckSound() {
+            const audio = new Audio('data:audio/wav;base64,UklGASwAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=');
+            audio.play().catch(() => {});
+        }
+
+        function movePiece(fromRow, fromCol, toRow, toCol) {
+            const move = validMoves.find(m => m.row === toRow && m.col === toCol);
+            const piece = board[fromRow][fromCol];
+            
+            // Roque
+            if (move.castling) {
+                const castlingRow = piece.color === 'white' ? 7 : 0;
+                if (move.castling === 'king') {
+                    board[castlingRow][5] = board[castlingRow][7];
+                    board[castlingRow][7] = null;
+                } else {
+                    board[castlingRow][3] = board[castlingRow][0];
+                    board[castlingRow][0] = null;
                 }
             }
             
+            // En passant
+            if (move.enPassant) {
+                board[fromRow][toCol] = null;
+            }
+            
+            board[toRow][toCol] = piece;
+            board[fromRow][fromCol] = null;
+            
+            // Atualizar en passant target
+            enPassantTarget = null;
+            if (piece.type === 'pawn' && Math.abs(toRow - fromRow) === 2) {
+                enPassantTarget = { row: (fromRow + toRow) / 2, col: fromCol };
+            }
+            
+            // Atualizar direitos de roque
+            if (piece.type === 'king') {
+                castlingRights[piece.color].kingSide = false;
+                castlingRights[piece.color].queenSide = false;
+            }
+            if (piece.type === 'rook') {
+                if (fromCol === 0) castlingRights[piece.color].queenSide = false;
+                if (fromCol === 7) castlingRights[piece.color].kingSide = false;
+            }
+            
+            // Promoção
+            if (piece.type === 'pawn' && (toRow === 0 || toRow === 7)) {
+                showPromotionModal(piece.color, toRow, toCol);
+                return;
+            }
+            
+            finishMove();
+        }
+
+        function showPromotionModal(color, row, col) {
+            const modal = document.getElementById('promotionModal');
+            const options = document.getElementById('promotionOptions');
+            options.innerHTML = '';
+            
+            ['queen', 'rook', 'bishop', 'knight'].forEach(type => {
+                const pieceDiv = document.createElement('div');
+                pieceDiv.className = 'promotion-piece';
+                pieceDiv.textContent = PIECES[color][type];
+                pieceDiv.onclick = () => {
+                    board[row][col] = { type, color };
+                    modal.classList.remove('active');
+                    finishMove();
+                };
+                options.appendChild(pieceDiv);
+            });
+            
+            modal.classList.add('active');
+        }
+
+        function finishMove() {
             clearSelection();
             moveCount++;
             
-            currentPlayer = currentPlayer === 'white' ? 'black' : 'white';
-            startTimer();
+            // Adicionar incremento
+            if (currentPlayer === 'white') {
+                whiteTime += increment;
+            } else {
+                blackTime += increment;
+            }
             
-            document.getElementById('status').textContent = 
-                `Vez das ${currentPlayer === 'white' ? 'Brancas' : 'Pretas'}`;
+            currentPlayer = currentPlayer === 'white' ? 'black' : 'white';
+            
+            // Verificar xeque-mate ou afogamento
+            if (isCheckmate(currentPlayer)) {
+                playCheckSound();
+                document.getElementById('status').textContent = 
+                    `🎉 Xeque-mate! ${currentPlayer === 'white' ? 'Pretas' : 'Brancas'} venceram!`;
+                gameActive = false;
+                stopTimer();
+            } else if (isStalemate(currentPlayer)) {
+                document.getElementById('status').textContent = '🤝 Afogamento! Empate!';
+                gameActive = false;
+                stopTimer();
+            } else {
+                if (isInCheck(currentPlayer)) {
+                    playCheckSound();
+                    // Destacar rei em xeque
+                    for (let row = 0; row < 8; row++) {
+                        for (let col = 0; col < 8; col++) {
+                            if (board[row][col] && board[row][col].type === 'king' && board[row][col].color === currentPlayer) {
+                                const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+                                cell.classList.add('check');
+                            }
+                        }
+                    }
+                }
+                
+                document.getElementById('status').textContent = 
+                    `Vez das ${currentPlayer === 'white' ? 'Brancas' : 'Pretas'}`;
+                
+                startTimer();
+            }
             
             renderBoard();
         }
@@ -794,17 +1204,30 @@
         }
 
         function resetGame() {
+            const timeInput = document.getElementById('initialTime');
+            const incrementInput = document.getElementById('increment');
+            
+            initialTime = Math.min(60, Math.max(1, parseInt(timeInput.value) || 15)) * 60;
+            increment = Math.min(60, Math.max(0, parseInt(incrementInput.value) || 2));
+            
             currentPlayer = 'white';
             selectedPiece = null;
             validMoves = [];
-            whiteTime = 900;
-            blackTime = 900;
+            whiteTime = initialTime;
+            blackTime = initialTime;
             moveCount = 0;
             gameActive = true;
-            document.getElementById('status').textContent = 'Vez das Brancas - 15:00';
+            
+            document.getElementById('status').textContent = `Vez das Brancas - ${formatTime(initialTime)}`;
             stopTimer();
             initBoard();
             renderBoard();
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
         }
 
         function showNotification(message, type = 'success') {
@@ -821,6 +1244,11 @@
             }, 3000);
         }
 
+        // Inicializar
+        initialTime = parseInt(document.getElementById('initialTime').value) * 60;
+        increment = parseInt(document.getElementById('increment').value);
+        whiteTime = initialTime;
+        blackTime = initialTime;
         initBoard();
         renderBoard();
     </script>
